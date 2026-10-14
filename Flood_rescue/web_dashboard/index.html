@@ -1,0 +1,2395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dynamic Flood Rescue Simulation – Adaptive PID Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+:root{
+  --bg:#223344;
+  --panel:#111c26;
+  --panel2:#1d2a38;
+  --border:#31485a;
+  --text:#dce6ee;
+  --muted:#91a3b5;
+  --cyan:#66c4f5;
+  --blue:#3498db;
+  --green:#58b66b;
+  --red:#f05b57;
+  --orange:#ffae32;
+  --yellow:#f4e86a;
+  --purple:#b44bd0;
+  --brown:#a77c52;
+}
+
+*{box-sizing:border-box}
+
+body{
+  margin:0;
+  padding:20px;
+  background:var(--bg);
+  color:var(--text);
+  font-family:Arial,sans-serif;
+}
+
+.container{
+  max-width:1800px;
+  margin:auto;
+}
+
+.header,.panel,.card,.chart-box{
+  background:var(--panel);
+  border:1px solid var(--border);
+  border-radius:12px;
+}
+
+.header{
+  padding:20px 24px;
+  margin-bottom:20px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+}
+
+.header h1{
+  margin:0;
+  color:var(--cyan);
+  font-size:24px;
+}
+
+.header small{
+  color:var(--muted);
+  margin-left:12px;
+}
+
+.stats{
+  display:flex;
+  gap:28px;
+}
+
+.stat{
+  text-align:center;
+}
+
+.stat label{
+  display:block;
+  color:var(--muted);
+  font-size:11px;
+}
+
+.stat b{
+  font-size:27px;
+}
+
+.time{color:var(--cyan)}
+.rescued{color:var(--green)}
+.dead{color:var(--red)}
+.pending{color:var(--orange)}
+
+.main{
+  display:grid;
+  grid-template-columns:minmax(650px,1fr) 350px;
+  gap:20px;
+}
+
+.panel{
+  padding:18px;
+}
+
+.map-head{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  margin-bottom:14px;
+  color:var(--muted);
+}
+
+.legend{
+  display:flex;
+  gap:12px;
+  font-size:12px;
+  flex-wrap:wrap;
+}
+
+.dot{
+  width:11px;
+  height:11px;
+  border-radius:50%;
+  display:inline-block;
+  margin-right:4px;
+}
+
+.map-wrap{
+  overflow:hidden;
+  border-radius:8px;
+}
+
+.map-wrap canvas{
+  display:block;
+  width:100%;
+  height:auto;
+  background:#1e3b4f;
+}
+
+.info{
+  max-height:700px;
+  overflow:auto;
+}
+
+.section{
+  padding-bottom:14px;
+  margin-bottom:14px;
+  border-bottom:1px solid var(--border);
+}
+
+.section h3{
+  margin:0 0 10px;
+  color:#b7cad9;
+}
+
+.item{
+  background:#1d2a38;
+  border-left:4px solid var(--blue);
+  padding:10px;
+  margin-bottom:8px;
+  border-radius:7px;
+  font-size:13px;
+}
+
+.item small{
+  color:var(--muted);
+}
+
+.victim{
+  border-left-color:var(--orange);
+}
+
+.badge{
+  float:right;
+  font-size:10px;
+  padding:3px 7px;
+  border-radius:10px;
+  background:#315f42;
+  color:#8ae49a;
+}
+
+.pid-title{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  margin:25px 0 12px;
+  color:var(--cyan);
+  font-size:18px;
+}
+
+.boat-selector{
+  display:flex;
+  gap:8px;
+}
+
+.boat-btn{
+  background:#1d2a38;
+  border:1px solid var(--border);
+  color:var(--muted);
+  padding:9px 18px;
+  border-radius:8px;
+  cursor:pointer;
+  transition:.15s;
+}
+
+.boat-btn:hover{
+  border-color:var(--cyan);
+  color:#fff;
+}
+
+.boat-btn.active{
+  background:#274052;
+  border-color:var(--cyan);
+  color:var(--cyan);
+  box-shadow:0 0 0 1px rgba(102,196,245,.15);
+}
+
+.cards{
+  display:grid;
+  grid-template-columns:repeat(5,1fr);
+  gap:14px;
+  margin-bottom:20px;
+}
+
+.environment-cards{
+  display:grid;
+  grid-template-columns:repeat(6,1fr);
+  gap:14px;
+  margin-bottom:20px;
+}
+
+.pid-cards{
+  display:grid;
+  grid-template-columns:repeat(6,1fr);
+  gap:14px;
+  margin-bottom:20px;
+}
+
+.card{
+  padding:16px;
+}
+
+.card label{
+  display:block;
+  color:var(--muted);
+  font-size:11px;
+}
+
+.card b{
+  display:block;
+  color:var(--cyan);
+  font-size:25px;
+  margin:12px 0 7px;
+}
+
+.card small{
+  color:var(--muted);
+}
+
+.pid-card-heading b{
+  color:var(--cyan);
+}
+
+.pid-card-speed b{
+  color:var(--green);
+}
+
+.water-card b{
+  color:#4fc3f7;
+}
+
+.severity-card b{
+  color:var(--orange);
+}
+
+.gain-card b{
+  color:var(--purple);
+}
+
+.charts{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:20px;
+  margin-bottom:20px;
+}
+
+.chart-box{
+  padding:15px;
+}
+
+.chart-box h3{
+  margin:0 0 10px;
+  color:#b7cad9;
+  font-size:15px;
+}
+
+.chart-wrap{
+  height:220px;
+  position:relative;
+}
+
+.chart-wrap canvas{
+  width:100%!important;
+  height:100%!important;
+}
+
+.note{
+  background:#152431;
+  border:1px solid var(--border);
+  border-left:4px solid var(--cyan);
+  border-radius:10px;
+  padding:16px;
+  color:#b5c5d2;
+  font-size:13px;
+  line-height:1.6;
+}
+
+.footer{
+  text-align:center;
+  color:var(--muted);
+  font-size:12px;
+  margin:16px;
+}
+
+.error{
+  display:none;
+  background:var(--red);
+  padding:10px;
+  border-radius:7px;
+  margin-bottom:12px;
+}
+
+.section-title{
+  color:var(--cyan);
+  margin:24px 0 12px;
+  font-size:17px;
+}
+
+@media(max-width:1400px){
+  .environment-cards,
+  .pid-cards{
+    grid-template-columns:repeat(3,1fr);
+  }
+}
+
+@media(max-width:1200px){
+  .charts{
+    grid-template-columns:repeat(2,1fr);
+  }
+
+  .cards{
+    grid-template-columns:repeat(3,1fr);
+  }
+}
+
+@media(max-width:900px){
+  body{
+    padding:10px;
+  }
+
+  .header,.main{
+    display:block;
+  }
+
+  .header h1{
+    margin-bottom:14px;
+  }
+
+  .stats{
+    justify-content:space-between;
+  }
+
+  .info{
+    margin-top:20px;
+  }
+
+  .charts,
+  .cards,
+  .environment-cards,
+  .pid-cards{
+    grid-template-columns:1fr;
+  }
+
+  .pid-title{
+    display:block;
+  }
+
+  .boat-selector{
+    margin-top:12px;
+    flex-wrap:wrap;
+  }
+}
+
+.graph-subtitle {
+  margin-top: 22px;
+  margin-bottom: 12px;
+  font-size: 16px;
+  border-left: 4px solid #58b66b;
+  padding-left: 12px;
+}
+
+</style>
+</head>
+
+<body>
+<div class="container">
+
+  <div class="header">
+    <h1>
+      🚁 Dynamic Flood Rescue Simulation
+      <small id="clock">Updating...</small>
+    </h1>
+
+    <div class="stats">
+      <div class="stat">
+        <label>TIME</label>
+        <b class="time" id="t">0</b>
+      </div>
+
+      <div class="stat">
+        <label>RESCUED</label>
+        <b class="rescued" id="r">0</b>
+      </div>
+
+      <div class="stat">
+        <label>DEAD</label>
+        <b class="dead" id="d">0</b>
+      </div>
+
+      <div class="stat">
+        <label>PENDING</label>
+        <b class="pending" id="p">0</b>
+      </div>
+    </div>
+  </div>
+
+  <div class="error" id="error">
+    ⚠️ Waiting for simulation data...
+  </div>
+
+  <!-- ================= MAP ================= -->
+
+  <div class="main">
+
+    <div class="panel">
+
+      <div class="map-head">
+        <span>🌊 Flood Map (Grid: 70 × 70)</span>
+
+        <div class="legend">
+          <span><i class="dot" style="background:#ffaa00"></i>Victim</span>
+          <span><i class="dot" style="background:#4caf50"></i>Rescued</span>
+          <span><i class="dot" style="background:#f44336"></i>Dead</span>
+          <span><i class="dot" style="background:#3498db"></i>Boat</span>
+          <span><i class="dot" style="background:#b44bd0"></i>Drone</span>
+          <span><i class="dot" style="background:#a77c52"></i>Debris</span>
+          <span><i class="dot" style="background:#f4e86a"></i>Mother Ship</span>
+        </div>
+      </div>
+
+      <div class="map-wrap">
+        <canvas id="map" width="700" height="700"></canvas>
+      </div>
+
+    </div>
+
+    <div class="panel info">
+
+      <div class="section">
+        <h3>🚤 Boats</h3>
+        <div id="boatList"></div>
+      </div>
+
+      <div class="section">
+        <h3>🎯 Victims</h3>
+        <div id="victimList"></div>
+      </div>
+
+      <div class="section">
+        <h3>🌬️ Environment</h3>
+
+        <div style="line-height:2;font-size:13px">
+          Wind Speed: <span id="wind">0</span><br>
+          Wind Angle: <span id="angle">0</span>°<br>
+          Debris: <span id="debris">0</span><br>
+          Water Flow X: <span id="waterX">0</span><br>
+          Water Flow Y: <span id="waterY">0</span><br>
+          Water Magnitude: <span id="waterMagnitude">0</span><br>
+          Water Change Rate: <span id="waterRate">0</span><br>
+          Water Disturbance: <span id="waterDisturbance">0</span><br>
+          Water Severity: <span id="waterSeverity">0</span><br>
+           Mother Ship: <span id="motherShipPos">-</span><br>
+           Boats Returned: <span id="returnedBoats">0</span>
+        </div>
+
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ================= PID SELECTOR ================= -->
+
+  <div class="pid-title">
+    <span>🎛️ Adaptive PID Control & Boat Dynamics</span>
+
+    <div class="boat-selector" id="boatSelector">
+      <button class="boat-btn active" data-boat="0">Boat 1</button>
+      <button class="boat-btn" data-boat="1">Boat 2</button>
+      <button class="boat-btn" data-boat="2">Boat 3</button>
+      <button class="boat-btn" data-boat="3">Boat 4</button>
+    </div>
+  </div>
+
+  <!-- ================= BOAT CONTROL CARDS ================= -->
+
+  <div class="cards">
+
+    <div class="card">
+      <label>TRACKING ERROR</label>
+      <b id="track">0.00</b>
+      <small>Distance to current waypoint</small>
+    </div>
+
+    <div class="card">
+      <label>ACTUAL VELOCITY</label>
+      <b id="vel">0.00</b>
+      <small>Current boat speed</small>
+    </div>
+
+    <div class="card">
+      <label>HEADING</label>
+      <b id="head">0°</b>
+      <small>Actual orientation</small>
+    </div>
+
+    <div class="card">
+      <label>FORCE COMMAND</label>
+      <b id="force">0.00</b>
+      <small>Speed PID output</small>
+    </div>
+
+    <div class="card">
+      <label>TORQUE COMMAND</label>
+      <b id="torque">0.00</b>
+      <small>Heading PID output</small>
+    </div>
+
+  </div>
+
+  <!-- ================= NUMERICAL DASHBOARD: PID ================= -->
+  <div class="section-title">🎚️ 1. Adaptive PID Gains — Selected Boat</div>
+  <!-- ================= PID CARDS ================= -->
+
+  <div class="pid-cards">
+
+    <div class="card pid-card-heading">
+      <label>HEADING Kp</label>
+      <b id="kpHeading">0.00</b>
+      <small>Proportional gain</small>
+    </div>
+
+    <div class="card pid-card-heading">
+      <label>HEADING Ki</label>
+      <b id="kiHeading">0.00</b>
+      <small>Integral gain</small>
+    </div>
+
+    <div class="card pid-card-heading">
+      <label>HEADING Kd</label>
+      <b id="kdHeading">0.00</b>
+      <small>Derivative gain</small>
+    </div>
+
+    <div class="card pid-card-speed">
+      <label>SPEED Kp</label>
+      <b id="kpSpeed">0.00</b>
+      <small>Proportional gain</small>
+    </div>
+
+    <div class="card pid-card-speed">
+      <label>SPEED Ki</label>
+      <b id="kiSpeed">0.00</b>
+      <small>Integral gain</small>
+    </div>
+
+    <div class="card pid-card-speed">
+      <label>SPEED Kd</label>
+      <b id="kdSpeed">0.00</b>
+      <small>Derivative gain</small>
+    </div>
+
+  </div>
+
+
+  <div class="section-title">🚤 2. Boat Status & Path Planning — Selected Boat</div>
+  <div class="cards">
+
+    <div class="card gain-card">
+      <label>PID GAIN FACTOR</label>
+      <b id="gainFactor">1.00</b>
+      <small>Adaptive heading scale</small>
+    </div>
+
+    <div class="card gain-card">
+      <label>SELECTED BOAT</label>
+      <b id="selectedBoatLabel">Boat 1</b>
+      <small>Currently monitored</small>
+    </div>
+
+    <div class="card">
+      <label>PLAN COUNT</label>
+      <b id="planCount">0</b>
+      <small>Path replanning count</small>
+    </div>
+
+    <div class="card">
+      <label>YAW RATE</label>
+      <b id="yawRate">0.00</b>
+      <small>Boat rotational speed</small>
+    </div>
+
+    <div class="card">
+      <label>TARGET</label>
+      <b id="targetBoat">-</b>
+      <small>Assigned victim</small>
+    </div>
+
+  </div>
+
+
+  <div class="section-title">🛟 3. Boat Stabilization — Selected Boat</div>
+  <div class="cards">
+    <div class="card">
+      <label>STABILIZATION EFFORT</label>
+      <b id="stabilizationEffort">0.0%</b>
+      <small>% of stabilizer torque limit used (not disturbance rejected)</small>
+    </div>
+    <div class="card">
+      <label>STABILIZATION TORQUE</label>
+      <b id="stabilizationTorque">0.00</b>
+      <small>Yaw-rate damping correction</small>
+    </div>
+    <div class="card">
+      <label>HEADING ERROR</label>
+      <b id="stabilizationHeadingError">0.00°</b>
+      <small>Desired minus actual heading</small>
+    </div>
+    <div class="card">
+      <label>YAW RATE</label>
+      <b id="stabilizationYawRate">0.000</b>
+      <small>Current boat rotation rate</small>
+    </div>
+  </div>
+
+
+
+  <div class="section-title">🌊 4. Dynamic Flood-Water Conditions</div>
+
+  <div class="environment-cards">
+
+    <div class="card water-card">
+      <label>WATER FLOW X</label>
+      <b id="flowXCard">0.000</b>
+      <small>Current X component</small>
+    </div>
+
+    <div class="card water-card">
+      <label>WATER FLOW Y</label>
+      <b id="flowYCard">0.000</b>
+      <small>Current Y component</small>
+    </div>
+
+    <div class="card water-card">
+      <label>WATER MAGNITUDE</label>
+      <b id="magnitudeCard">0.000</b>
+      <small>Current strength</small>
+    </div>
+
+    <div class="card water-card">
+      <label>CHANGE RATE</label>
+      <b id="rateCard">0.000</b>
+      <small>How quickly water changes</small>
+    </div>
+
+    <div class="card severity-card">
+      <label>WATER DISTURBANCE</label>
+      <b id="disturbanceCard">0.000</b>
+      <small>PID disturbance input</small>
+    </div>
+
+    <div class="card severity-card">
+      <label>WATER SEVERITY</label>
+      <b id="severityCard">0.00</b>
+      <small>0 = calm, 1 = severe</small>
+    </div>
+
+  </div>
+
+
+  <!-- ================= GRAPH DASHBOARD ================= -->
+  <div class="section-title">📈 Graphs & Live Trends</div>
+  <div class="section-title graph-subtitle">🎛️ 1. Boat Dynamics & Adaptive PID Graphs</div>
+  <div class="charts">
+
+    <div class="chart-box">
+      <h3>📉 Tracking Error – All Boats</h3>
+      <div class="chart-wrap">
+        <canvas id="trackingChart"></canvas>
+      </div>
+    </div>
+
+    <div class="chart-box">
+      <h3>⚡ Speed Response – Selected Boat</h3>
+      <div class="chart-wrap">
+        <canvas id="speedChart"></canvas>
+      </div>
+    </div>
+
+    <div class="chart-box">
+      <h3>🧭 Heading Response – Selected Boat</h3>
+      <div class="chart-wrap">
+        <canvas id="headingChart"></canvas>
+      </div>
+    </div>
+
+    <div class="chart-box">
+      <h3>🚤 Differential Thrusters – Selected Boat</h3>
+      <div class="chart-wrap">
+        <canvas id="thrusterChart"></canvas>
+      </div>
+    </div>
+
+    <div class="chart-box">
+      <h3>🎚️ PID Control Commands – Selected Boat</h3>
+      <div class="chart-wrap">
+        <canvas id="controlChart"></canvas>
+      </div>
+    </div>
+
+    <div class="chart-box">
+      <h3>🌊 Water Disturbance & Severity</h3>
+      <div class="chart-wrap">
+        <canvas id="waterChart"></canvas>
+      </div>
+    </div>
+
+    <div class="chart-box">
+      <h3>📈 Adaptive PID Gain Factor</h3>
+      <div class="chart-wrap">
+        <canvas id="gainChart"></canvas>
+      </div>
+    </div>
+
+    <div class="chart-box">
+      <h3>🧮 Heading PID Gains – Selected Boat</h3>
+      <div class="chart-wrap">
+        <canvas id="headingPidChart"></canvas>
+      </div>
+    </div>
+
+    <div class="chart-box">
+      <h3>🏎️ Speed PID Gains – Selected Boat</h3>
+      <div class="chart-wrap">
+        <canvas id="speedPidChart"></canvas>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ================= MISSION AND ENVIRONMENT GRAPHS ================= -->
+  <div class="section-title graph-subtitle">🚨 2. Rescue Mission & Environment Graphs</div>
+  <div class="charts">
+
+    <div class="chart-box">
+      <h3>📊 Rescue Progress</h3>
+      <div class="chart-wrap">
+        <canvas id="rescueChart"></canvas>
+      </div>
+    </div>
+
+    <div class="chart-box">
+      <h3>⚠️ Danger Levels</h3>
+      <div class="chart-wrap">
+        <canvas id="dangerChart"></canvas>
+      </div>
+    </div>
+
+    <div class="chart-box">
+      <h3>🚤 Rescue Count per Boat</h3>
+      <div class="chart-wrap">
+        <canvas id="boatChart"></canvas>
+      </div>
+    </div>
+
+    <div class="chart-box">
+      <h3>🌪️ Wind Conditions</h3>
+      <div class="chart-wrap">
+        <canvas id="windChart"></canvas>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ================= FINAL CHARTS: BOAT STABILIZATION ================= -->
+  <div class="section-title graph-subtitle">🛟 3. Boat Stabilization Graphs</div>
+  <div class="charts">
+    <div class="chart-box">
+      <h3>🛟 Stabilization Effort — Selected Boat</h3>
+      <div class="chart-wrap"><canvas id="stabilizationEffortChart"></canvas></div>
+    </div>
+    <div class="chart-box">
+      <h3>🧭 Heading Error and Yaw Rate — Selected Boat</h3>
+      <div class="chart-wrap"><canvas id="stabilizationResponseChart"></canvas></div>
+    </div>
+  </div>
+
+  <div class="note">
+    <b style="color:#66c4f5">Adaptive PID demonstration:</b>
+    Select any boat using the buttons above, or click a boat directly on the flood map.
+    When flood-water movement becomes stronger or changes more rapidly, the water
+    disturbance and severity values change. The adaptive PID scheduler then changes
+    the PID gains. The dashboard displays the live Kp, Ki and Kd values together
+    with the boat's tracking error, speed, heading, thruster commands and water
+    conditions.
+  </div>
+
+  <div class="note" style="margin-top:14px">
+    <b style="color:#58b66b">Boat stabilization:</b>
+    the additional yaw-rate damping term opposes unwanted rotation and is added to the existing heading PID output.
+    Stabilization effort is shown as the absolute corrective torque divided by the configured stabilizer torque limit.
+    It indicates controller effort, not a percentage of disturbance eliminated. Compare heading error and yaw rate under matched disturbances to evaluate actual improvement.
+  </div>
+
+  <div class="footer">
+    ⚡ Live updates every 100 ms |
+    A* Path Planning + Dynamic Replanning + Adaptive PID Control +
+    Differential Thruster Dynamics
+  </div>
+
+</div>
+
+<script>
+
+/* =========================================================
+   GLOBAL SETTINGS
+   ========================================================= */
+
+Chart.defaults.color = '#dce6ee';
+Chart.defaults.borderColor = '#31485a';
+
+const N = 100;
+
+const hist = {
+  time: [],
+  rescued: [],
+  dead: [],
+  wind: [],
+  angle: [],
+
+  waterX: [],
+  waterY: [],
+  waterMagnitude: [],
+  waterRate: [],
+  waterDisturbance: [],
+  waterSeverity: [],
+
+  track: [[],[],[],[]],
+  vel: [[],[],[],[]],
+  ref: [[],[],[],[]],
+
+  head: [[],[],[],[]],
+  desired: [[],[],[],[]],
+
+  TL: [[],[],[],[]],
+  TR: [[],[],[],[]],
+
+  force: [[],[],[],[]],
+  torque: [[],[],[],[]],
+  stabilizationEffort: [[],[],[],[]],
+  stabilizationTorque: [[],[],[],[]],
+  headingErrorDeg: [[],[],[],[]],
+  yawRate: [[],[],[],[]],
+
+  pidGain: [[],[],[],[]],
+
+  kpH: [[],[],[],[]],
+  kiH: [[],[],[],[]],
+  kdH: [[],[],[],[]],
+
+  kpS: [[],[],[],[]],
+  kiS: [[],[],[],[]],
+  kdS: [[],[],[],[]]
+};
+
+let selectedBoat = 0;
+
+let latest = {
+  boats: [],
+  victims: [],
+  drones: [],
+  debris: []
+};
+
+/* =========================================================
+   HELPER FUNCTIONS
+   ========================================================= */
+
+const n = v =>
+  Number.isFinite(Number(v)) ? Number(v) : 0;
+
+const heading = v => {
+  v = n(v);
+  return ((v % 360) + 360) % 360;
+};
+
+function push(a,v){
+  a.push(v);
+  if(a.length > N){
+    a.shift();
+  }
+}
+
+/* =========================================================
+   GENERIC LINE CHART
+   ========================================================= */
+
+function line(id, ds, scales){
+
+  return new Chart(
+    document.getElementById(id),
+    {
+      type:'line',
+
+      data:{
+        labels:[],
+        datasets:ds
+      },
+
+      options:{
+        responsive:true,
+        maintainAspectRatio:false,
+        animation:false,
+
+        interaction:{
+          mode:'index',
+          intersect:false
+        },
+
+        scales:scales || {
+          x:{
+            ticks:{
+              maxTicksLimit:8
+            }
+          },
+
+          y:{
+            beginAtZero:true
+          }
+        },
+
+        plugins:{
+          legend:{
+            labels:{
+              boxWidth:14
+            }
+          }
+        }
+      }
+    }
+  );
+}
+
+/* =========================================================
+   TRACKING CHART
+   ========================================================= */
+
+const trackingChart = line(
+  'trackingChart',
+  [
+    {label:'Boat 1',data:[],borderColor:'#66c4f5',pointRadius:0,tension:.25},
+    {label:'Boat 2',data:[],borderColor:'#ffae32',pointRadius:0,tension:.25},
+    {label:'Boat 3',data:[],borderColor:'#58b66b',pointRadius:0,tension:.25},
+    {label:'Boat 4',data:[],borderColor:'#f08080',pointRadius:0,tension:.25}
+  ]
+);
+
+/* =========================================================
+   SPEED CHART
+   ========================================================= */
+
+const speedChart = line(
+  'speedChart',
+  [
+    {
+      label:'Actual Velocity',
+      data:[],
+      borderColor:'#58b66b',
+      pointRadius:0,
+      tension:.25
+    },
+
+    {
+      label:'Speed Reference',
+      data:[],
+      borderColor:'#ffae32',
+      borderDash:[6,4],
+      pointRadius:0
+    }
+  ]
+);
+
+/* =========================================================
+   HEADING CHART
+   ========================================================= */
+
+const headingChart = line(
+  'headingChart',
+  [
+    {
+      label:'Actual Heading',
+      data:[],
+      borderColor:'#66c4f5',
+      pointRadius:0,
+      tension:.25
+    },
+
+    {
+      label:'Desired Heading',
+      data:[],
+      borderColor:'#ffae32',
+      borderDash:[6,4],
+      pointRadius:0
+    }
+  ]
+);
+
+/* =========================================================
+   THRUSTER CHART
+   ========================================================= */
+
+const thrusterChart = line(
+  'thrusterChart',
+  [
+    {
+      label:'Left Thruster',
+      data:[],
+      borderColor:'#66c4f5',
+      pointRadius:0,
+      tension:.2
+    },
+
+    {
+      label:'Right Thruster',
+      data:[],
+      borderColor:'#ffae32',
+      pointRadius:0,
+      tension:.2
+    }
+  ]
+);
+
+/* =========================================================
+   CONTROL COMMAND CHART
+   ========================================================= */
+
+const controlChart = line(
+  'controlChart',
+  [
+    {
+      label:'Force Command',
+      data:[],
+      borderColor:'#58b66b',
+      pointRadius:0,
+      tension:.2,
+      yAxisID:'y'
+    },
+
+    {
+      label:'Torque Command',
+      data:[],
+      borderColor:'#b44bd0',
+      pointRadius:0,
+      tension:.2,
+      yAxisID:'y1'
+    }
+  ],
+  {
+    x:{
+      ticks:{
+        maxTicksLimit:8
+      }
+    },
+
+    y:{
+      position:'left'
+    },
+
+    y1:{
+      position:'right',
+      grid:{
+        drawOnChartArea:false
+      }
+    }
+  }
+);
+
+/* =========================================================
+   WATER DISTURBANCE CHART
+   ========================================================= */
+
+const waterChart = line(
+  'waterChart',
+  [
+    {
+      label:'Water Disturbance',
+      data:[],
+      borderColor:'#66c4f5',
+      pointRadius:0,
+      tension:.2,
+      yAxisID:'y'
+    },
+
+    {
+      label:'Water Severity',
+      data:[],
+      borderColor:'#ffae32',
+      pointRadius:0,
+      tension:.2,
+      yAxisID:'y1'
+    }
+  ],
+  {
+    x:{
+      ticks:{
+        maxTicksLimit:8
+      }
+    },
+
+    y:{
+      position:'left',
+      beginAtZero:true
+    },
+
+    y1:{
+      position:'right',
+      min:0,
+      max:1,
+      grid:{
+        drawOnChartArea:false
+      }
+    }
+  }
+);
+
+/* =========================================================
+   PID GAIN FACTOR CHART
+   ========================================================= */
+
+const gainChart = line(
+  'gainChart',
+  [
+    {
+      label:'PID Gain Factor',
+      data:[],
+      borderColor:'#b44bd0',
+      pointRadius:0,
+      tension:.2
+    },
+
+    {
+      label:'Water Severity',
+      data:[],
+      borderColor:'#ffae32',
+      borderDash:[6,4],
+      pointRadius:0,
+      tension:.2
+    }
+  ]
+);
+
+/* =========================================================
+   HEADING PID GAINS
+   ========================================================= */
+
+const headingPidChart = line(
+  'headingPidChart',
+  [
+    {
+      label:'Kp Heading',
+      data:[],
+      borderColor:'#66c4f5',
+      pointRadius:0,
+      tension:.2
+    },
+
+    {
+      label:'Ki Heading',
+      data:[],
+      borderColor:'#58b66b',
+      pointRadius:0,
+      tension:.2
+    },
+
+    {
+      label:'Kd Heading',
+      data:[],
+      borderColor:'#b44bd0',
+      pointRadius:0,
+      tension:.2
+    }
+  ]
+);
+
+/* =========================================================
+   SPEED PID GAINS
+   ========================================================= */
+
+const speedPidChart = line(
+  'speedPidChart',
+  [
+    {
+      label:'Kp Speed',
+      data:[],
+      borderColor:'#66c4f5',
+      pointRadius:0,
+      tension:.2
+    },
+
+    {
+      label:'Ki Speed',
+      data:[],
+      borderColor:'#58b66b',
+      pointRadius:0,
+      tension:.2
+    },
+
+    {
+      label:'Kd Speed',
+      data:[],
+      borderColor:'#b44bd0',
+      pointRadius:0,
+      tension:.2
+    }
+  ]
+);
+
+/* =========================================================
+   RESCUE CHART
+   ========================================================= */
+
+const rescueChart = line(
+  'rescueChart',
+  [
+    {
+      label:'Rescued',
+      data:[],
+      borderColor:'#58b66b',
+      pointRadius:0,
+      tension:.2
+    },
+
+    {
+      label:'Dead',
+      data:[],
+      borderColor:'#f05b57',
+      pointRadius:0,
+      tension:.2
+    }
+  ]
+);
+
+/* =========================================================
+   DANGER CHART
+   ========================================================= */
+
+const dangerChart = new Chart(
+  document.getElementById('dangerChart'),
+  {
+    type:'doughnut',
+
+    data:{
+      labels:[
+        'Critical',
+        'High',
+        'Medium',
+        'Low',
+        'Finished'
+      ],
+
+      datasets:[
+        {
+          data:[0,0,0,0,8],
+          backgroundColor:[
+            '#f05b57',
+            '#ffae32',
+            '#f4e86a',
+            '#58b66b',
+            '#777'
+          ]
+        }
+      ]
+    },
+
+    options:{
+      responsive:true,
+      maintainAspectRatio:false,
+      animation:false
+    }
+  }
+);
+
+/* =========================================================
+   BOAT RESCUE CHART
+   ========================================================= */
+
+const boatChart = new Chart(
+  document.getElementById('boatChart'),
+  {
+    type:'bar',
+
+    data:{
+      labels:[
+        'Boat 1',
+        'Boat 2',
+        'Boat 3',
+        'Boat 4'
+      ],
+
+      datasets:[
+        {
+          label:'Rescues',
+          data:[0,0,0,0],
+          backgroundColor:'#3498db'
+        }
+      ]
+    },
+
+    options:{
+      responsive:true,
+      maintainAspectRatio:false,
+      animation:false,
+
+      scales:{
+        y:{
+          beginAtZero:true
+        }
+      }
+    }
+  }
+);
+
+/* =========================================================
+   WIND CHART
+   ========================================================= */
+
+const windChart = line(
+  'windChart',
+  [
+    {
+      label:'Wind Speed',
+      data:[],
+      borderColor:'#66c4f5',
+      pointRadius:0,
+      tension:.2,
+      yAxisID:'y'
+    },
+
+    {
+      label:'Wind Angle',
+      data:[],
+      borderColor:'#ffae32',
+      pointRadius:0,
+      tension:.2,
+      yAxisID:'y1'
+    }
+  ],
+  {
+    x:{
+      ticks:{
+        maxTicksLimit:8
+      }
+    },
+
+    y:{
+      position:'left'
+    },
+
+    y1:{
+      position:'right',
+      min:0,
+      max:360,
+      grid:{
+        drawOnChartArea:false
+      }
+    }
+  }
+);
+
+/* =========================================================
+   BOAT STABILIZATION CHARTS (ADDED)
+   ========================================================= */
+const stabilizationEffortChart = line(
+  'stabilizationEffortChart',
+  [{label:'Stabilizer Effort (%)',data:[],borderColor:'#58b66b',pointRadius:0,tension:.2}],
+  {x:{ticks:{maxTicksLimit:8}},y:{beginAtZero:true,min:0,max:100,title:{display:true,text:'Torque-limit usage (%)'}}}
+);
+
+const stabilizationResponseChart = line(
+  'stabilizationResponseChart',
+  [
+    {label:'Heading Error (deg)',data:[],borderColor:'#ffae32',pointRadius:0,tension:.2,yAxisID:'y'},
+    {label:'Yaw Rate',data:[],borderColor:'#66c4f5',pointRadius:0,tension:.2,yAxisID:'y1'}
+  ],
+  {x:{ticks:{maxTicksLimit:8}},y:{position:'left',title:{display:true,text:'Heading error (deg)'}},y1:{position:'right',grid:{drawOnChartArea:false},title:{display:true,text:'Yaw rate'}}}
+);
+
+/* =========================================================
+   BOAT SELECTION
+   ========================================================= */
+
+function updateSelection(i){
+
+  if(i < 0 || i >= 4){
+    return;
+  }
+
+  selectedBoat = i;
+
+  document
+    .querySelectorAll('.boat-btn')
+    .forEach(b =>
+      b.classList.toggle(
+        'active',
+        Number(b.dataset.boat) === selectedBoat
+      )
+    );
+
+  refreshSelected();
+  renderMap(latest);
+}
+
+/* =========================================================
+   BUTTON EVENT
+   ========================================================= */
+
+document
+  .getElementById('boatSelector')
+  .addEventListener('click',e => {
+
+    const btn = e.target.closest('.boat-btn');
+
+    if(btn){
+      updateSelection(
+        Number(btn.dataset.boat)
+      );
+    }
+  });
+
+/* =========================================================
+   REFRESH SELECTED BOAT
+   ========================================================= */
+
+function refreshSelected(){
+
+  const i = selectedBoat;
+  const b = latest.boats?.[i] || {};
+
+  /* ---------- charts ---------- */
+
+  speedChart.data.labels = hist.time;
+  speedChart.data.datasets[0].data = hist.vel[i];
+  speedChart.data.datasets[1].data = hist.ref[i];
+
+  headingChart.data.labels = hist.time;
+  headingChart.data.datasets[0].data = hist.head[i];
+  headingChart.data.datasets[1].data = hist.desired[i];
+
+  thrusterChart.data.labels = hist.time;
+  thrusterChart.data.datasets[0].data = hist.TL[i];
+  thrusterChart.data.datasets[1].data = hist.TR[i];
+
+  controlChart.data.labels = hist.time;
+  controlChart.data.datasets[0].data = hist.force[i];
+  controlChart.data.datasets[1].data = hist.torque[i];
+
+  waterChart.data.labels = hist.time;
+  waterChart.data.datasets[0].data = hist.waterDisturbance;
+  waterChart.data.datasets[1].data = hist.waterSeverity;
+
+  gainChart.data.labels = hist.time;
+  gainChart.data.datasets[0].data = hist.pidGain[i];
+  gainChart.data.datasets[1].data = hist.waterSeverity;
+
+  headingPidChart.data.labels = hist.time;
+  headingPidChart.data.datasets[0].data = hist.kpH[i];
+  headingPidChart.data.datasets[1].data = hist.kiH[i];
+  headingPidChart.data.datasets[2].data = hist.kdH[i];
+
+  speedPidChart.data.labels = hist.time;
+  speedPidChart.data.datasets[0].data = hist.kpS[i];
+  speedPidChart.data.datasets[1].data = hist.kiS[i];
+  speedPidChart.data.datasets[2].data = hist.kdS[i];
+
+  stabilizationEffortChart.data.labels = hist.time;
+  stabilizationEffortChart.data.datasets[0].data = hist.stabilizationEffort[i];
+  stabilizationResponseChart.data.labels = hist.time;
+  stabilizationResponseChart.data.datasets[0].data = hist.headingErrorDeg[i];
+  stabilizationResponseChart.data.datasets[1].data = hist.yawRate[i];
+
+  [
+    speedChart,
+    headingChart,
+    thrusterChart,
+    controlChart,
+    waterChart,
+    gainChart,
+    headingPidChart,
+    speedPidChart,
+    stabilizationEffortChart,
+    stabilizationResponseChart
+  ].forEach(c => c.update('none'));
+
+  /* ---------- current boat cards ---------- */
+
+  document.getElementById('track').textContent =
+    n(b.trackErr ?? b.trackError).toFixed(2);
+
+  document.getElementById('vel').textContent =
+    n(b.velocity ?? b.actualSpeed ?? b.vel).toFixed(2);
+
+  document.getElementById('head').textContent =
+    heading(b.heading ?? b.headingDeg).toFixed(2) + '°';
+
+  document.getElementById('force').textContent =
+    n(b.Fcmd ?? b.forceCmd ?? b.accelCmd).toFixed(2);
+
+  document.getElementById('torque').textContent =
+    n(b.tauCmd ?? b.torqueCmd ?? b.yawCmd).toFixed(2);
+
+  document.getElementById('stabilizationEffort').textContent =
+    n(b.stabilizationEffortPct).toFixed(1) + '%';
+  document.getElementById('stabilizationTorque').textContent =
+    n(b.tauStabilization).toFixed(2);
+  document.getElementById('stabilizationHeadingError').textContent =
+    n(b.headingErrorDeg).toFixed(2) + '°';
+  document.getElementById('stabilizationYawRate').textContent =
+    n(b.yawRate).toFixed(3);
+
+  /* ---------- PID values ---------- */
+
+  document.getElementById('kpHeading').textContent =
+    n(b.KpHeading).toFixed(3);
+
+  document.getElementById('kiHeading').textContent =
+    n(b.KiHeading).toFixed(3);
+
+  document.getElementById('kdHeading').textContent =
+    n(b.KdHeading).toFixed(3);
+
+  document.getElementById('kpSpeed').textContent =
+    n(b.KpSpeed).toFixed(3);
+
+  document.getElementById('kiSpeed').textContent =
+    n(b.KiSpeed).toFixed(3);
+
+  document.getElementById('kdSpeed').textContent =
+    n(b.KdSpeed).toFixed(3);
+
+  document.getElementById('gainFactor').textContent =
+    n(b.pidGainFactor).toFixed(3);
+
+  document.getElementById('selectedBoatLabel').textContent =
+    'Boat ' + (b.id ?? i + 1);
+
+  document.getElementById('planCount').textContent =
+    n(b.plans);
+
+  document.getElementById('yawRate').textContent =
+    n(b.yawRate).toFixed(3);
+
+  document.getElementById('targetBoat').textContent =
+    b.target === undefined ||
+    b.target === null ||
+    b.target < 0
+      ? '-'
+      : b.target;
+}
+
+/* =========================================================
+   UPDATE ALL DATA
+   ========================================================= */
+
+function updateData(data){
+
+  latest = data || latest;
+
+  const boats =
+    Array.isArray(data.boats)
+      ? data.boats
+      : [];
+
+  /* ---------- global history ---------- */
+
+  const t =
+    data.t ?? hist.time.length;
+
+  push(hist.time,t);
+
+  push(
+    hist.rescued,
+    n(data.rescued)
+  );
+
+  push(
+    hist.dead,
+    n(data.dead)
+  );
+
+  push(
+    hist.wind,
+    n(data.wind)
+  );
+
+  push(
+    hist.angle,
+    n(data.windAng)
+  );
+
+  /* ---------- water history ---------- */
+
+  push(
+    hist.waterX,
+    n(data.waterFlowX)
+  );
+
+  push(
+    hist.waterY,
+    n(data.waterFlowY)
+  );
+
+  push(
+    hist.waterMagnitude,
+    n(data.waterMagnitude)
+  );
+
+  push(
+    hist.waterRate,
+    n(data.waterRate)
+  );
+
+  push(
+    hist.waterDisturbance,
+    n(data.waterDisturbance)
+  );
+
+  push(
+    hist.waterSeverity,
+    n(data.waterSeverity)
+  );
+
+  /* ---------- boat history ---------- */
+
+  for(let i=0;i<4;i++){
+
+    const b = boats[i] || {};
+
+    push(
+      hist.track[i],
+      n(b.trackErr ?? b.trackError)
+    );
+
+    push(
+      hist.vel[i],
+      n(b.velocity ?? b.actualSpeed ?? b.vel)
+    );
+
+    push(
+      hist.ref[i],
+      n(b.speedTarget ?? b.speedDes ?? b.desiredSpeed ?? b.speed)
+    );
+
+    push(
+      hist.head[i],
+      heading(b.heading ?? b.headingDeg)
+    );
+
+    push(
+      hist.desired[i],
+      Number.isFinite(
+        Number(b.desiredHeading ?? b.psiDes)
+      )
+        ? heading(
+            b.desiredHeading ?? b.psiDes
+          )
+        : null
+    );
+
+    push(
+      hist.TL[i],
+      n(b.TL)
+    );
+
+    push(
+      hist.TR[i],
+      n(b.TR)
+    );
+
+    push(
+      hist.force[i],
+      n(b.Fcmd ?? b.forceCmd ?? b.accelCmd)
+    );
+
+    push(
+      hist.torque[i],
+      n(b.tauCmd ?? b.torqueCmd ?? b.yawCmd)
+    );
+
+    push(hist.stabilizationEffort[i], n(b.stabilizationEffortPct));
+    push(hist.stabilizationTorque[i], n(b.tauStabilization));
+    push(hist.headingErrorDeg[i], n(b.headingErrorDeg));
+    push(hist.yawRate[i], n(b.yawRate));
+
+    /* ---------- adaptive PID history ---------- */
+
+    push(
+      hist.pidGain[i],
+      n(b.pidGainFactor)
+    );
+
+    push(
+      hist.kpH[i],
+      n(b.KpHeading)
+    );
+
+    push(
+      hist.kiH[i],
+      n(b.KiHeading)
+    );
+
+    push(
+      hist.kdH[i],
+      n(b.KdHeading)
+    );
+
+    push(
+      hist.kpS[i],
+      n(b.KpSpeed)
+    );
+
+    push(
+      hist.kiS[i],
+      n(b.KiSpeed)
+    );
+
+    push(
+      hist.kdS[i],
+      n(b.KdSpeed)
+    );
+  }
+
+  /* ---------- tracking chart ---------- */
+
+  trackingChart.data.labels = hist.time;
+
+  for(let i=0;i<4;i++){
+    trackingChart.data.datasets[i].data =
+      hist.track[i];
+  }
+
+  trackingChart.update('none');
+
+  /* ---------- rescue chart ---------- */
+
+  rescueChart.data.labels =
+    hist.time;
+
+  rescueChart.data.datasets[0].data =
+    hist.rescued;
+
+  rescueChart.data.datasets[1].data =
+    hist.dead;
+
+  rescueChart.update('none');
+
+  /* ---------- wind chart ---------- */
+
+  windChart.data.labels =
+    hist.time;
+
+  windChart.data.datasets[0].data =
+    hist.wind;
+
+  windChart.data.datasets[1].data =
+    hist.angle;
+
+  windChart.update('none');
+
+  /* ---------- danger chart ---------- */
+
+  const c = {
+    CRITICAL:0,
+    HIGH:0,
+    MEDIUM:0,
+    LOW:0,
+    OTHER:0
+  };
+
+  (data.victims || []).forEach(v => {
+
+    if(v.dead || v.rescued){
+      c.OTHER++;
+    }
+    else if(c[v.lvl] !== undefined){
+      c[v.lvl]++;
+    }
+    else{
+      c.LOW++;
+    }
+  });
+
+  dangerChart.data.datasets[0].data = [
+    c.CRITICAL,
+    c.HIGH,
+    c.MEDIUM,
+    c.LOW,
+    c.OTHER
+  ];
+
+  dangerChart.update('none');
+
+  /* ---------- boat rescue chart ---------- */
+
+  boatChart.data.datasets[0].data =
+    [0,1,2,3].map(
+      i => n(boats[i]?.rescues)
+    );
+
+  boatChart.update('none');
+
+  /* ---------- selected boat ---------- */
+
+  refreshSelected();
+
+  /* ---------- map ---------- */
+
+  renderMap(data);
+
+  /* ---------- lists ---------- */
+
+  renderLists(data);
+
+  /* ---------- environment values ---------- */
+
+  document.getElementById('waterX').textContent =
+    n(data.waterFlowX).toFixed(4);
+
+  document.getElementById('waterY').textContent =
+    n(data.waterFlowY).toFixed(4);
+
+  document.getElementById('waterMagnitude').textContent =
+    n(data.waterMagnitude).toFixed(4);
+
+  document.getElementById('waterRate').textContent =
+    n(data.waterRate).toFixed(4);
+
+  document.getElementById('waterDisturbance').textContent =
+    n(data.waterDisturbance).toFixed(4);
+
+  document.getElementById('waterSeverity').textContent =
+    n(data.waterSeverity).toFixed(3);
+
+  document.getElementById('flowXCard').textContent =
+    n(data.waterFlowX).toFixed(4);
+
+  document.getElementById('flowYCard').textContent =
+    n(data.waterFlowY).toFixed(4);
+
+  document.getElementById('magnitudeCard').textContent =
+    n(data.waterMagnitude).toFixed(4);
+
+  document.getElementById('rateCard').textContent =
+    n(data.waterRate).toFixed(4);
+
+  document.getElementById('disturbanceCard').textContent =
+    n(data.waterDisturbance).toFixed(4);
+
+  document.getElementById('severityCard').textContent =
+    n(data.waterSeverity).toFixed(3);
+
+  const ms = data.motherShip || {};
+
+  document.getElementById('motherShipPos').textContent =
+    Number.isFinite(Number(ms.x)) && Number.isFinite(Number(ms.y))
+      ? '(' + Math.round(n(ms.x)) + ', ' + Math.round(n(ms.y)) + ')'
+      : '-';
+
+  document.getElementById('returnedBoats').textContent =
+    n(data.returnedBoats);
+}
+
+/* =========================================================
+   MAP
+   ========================================================= */
+
+const map =
+  document.getElementById('map');
+
+const ctx =
+  map.getContext('2d');
+
+const S = 10;
+
+function renderMap(data){
+
+  ctx.clearRect(
+    0,
+    0,
+    700,
+    700
+  );
+
+  ctx.fillStyle = '#1e3b4f';
+
+  ctx.fillRect(
+    0,
+    0,
+    700,
+    700
+  );
+
+  /* grid */
+
+  ctx.strokeStyle = '#294658';
+  ctx.lineWidth = .5;
+
+  for(let i=0;i<=70;i++){
+
+    ctx.beginPath();
+    ctx.moveTo(i*S,0);
+    ctx.lineTo(i*S,700);
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.moveTo(0,i*S);
+    ctx.lineTo(700,i*S);
+    ctx.stroke();
+  }
+
+  /* debris */
+
+  (data.debris || []).forEach(d => {
+
+    ctx.fillStyle = '#a77c52';
+
+    ctx.beginPath();
+
+    ctx.arc(
+      n(d[0])*S,
+      n(d[1])*S,
+      3,
+      0,
+      Math.PI*2
+    );
+
+    ctx.fill();
+  });
+
+  /* mother ship */
+
+  if(data.motherShip){
+
+    const mx = n(data.motherShip.x)*S;
+    const my = n(data.motherShip.y)*S;
+    const mr = Math.max(10,n(data.motherShip.radius)*S);
+
+    ctx.save();
+
+    ctx.fillStyle = '#f4e86a';
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 2;
+
+    ctx.beginPath();
+    ctx.arc(mx,my,mr,0,Math.PI*2);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.fillStyle = '#223344';
+    ctx.font = 'bold 12px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText('MS',mx,my+4);
+
+    ctx.restore();
+  }
+
+  /* paths */
+
+  (data.boats || []).forEach(b => {
+
+    if(
+      !Array.isArray(b.path) ||
+      b.path.length < 2
+    ){
+      return;
+    }
+
+    ctx.strokeStyle =
+      'rgba(180,75,208,.6)';
+
+    ctx.setLineDash([7,7]);
+
+    ctx.beginPath();
+
+    b.path.forEach((p,k) => {
+
+      if(k){
+        ctx.lineTo(
+          n(p[0])*S,
+          n(p[1])*S
+        );
+      }
+      else{
+        ctx.moveTo(
+          n(p[0])*S,
+          n(p[1])*S
+        );
+      }
+    });
+
+    ctx.stroke();
+
+    ctx.setLineDash([]);
+  });
+
+  /* victims */
+
+  (data.victims || []).forEach(v => {
+
+    const x = n(v.x)*S;
+    const y = n(v.y)*S;
+
+    ctx.fillStyle =
+      v.dead
+        ? '#f44336'
+        : v.rescued
+          ? '#4caf50'
+          : '#ffaa00';
+
+    ctx.beginPath();
+
+    ctx.arc(
+      x,
+      y,
+      5,
+      0,
+      Math.PI*2
+    );
+
+    ctx.fill();
+
+    ctx.fillStyle = 'white';
+    ctx.font = '9px Arial';
+    ctx.textAlign = 'center';
+
+    ctx.fillText(
+      v.dead
+        ? '×'
+        : v.rescued
+          ? '✓'
+          : '●',
+      x,
+      y+3
+    );
+  });
+
+  /* drones */
+
+  (data.drones || []).forEach(d => {
+
+    ctx.fillStyle = '#b44bd0';
+
+    ctx.beginPath();
+
+    ctx.arc(
+      n(d.x)*S,
+      n(d.y)*S,
+      8,
+      0,
+      Math.PI*2
+    );
+
+    ctx.fill();
+  });
+
+  /* boats */
+
+  (data.boats || []).forEach((b,i) => {
+
+    const x = n(b.x)*S;
+    const y = n(b.y)*S;
+
+    const a =
+      n(b.heading ?? b.headingDeg)
+      * Math.PI / 180;
+
+    ctx.save();
+
+    ctx.translate(x,y);
+    ctx.rotate(a);
+
+    ctx.fillStyle =
+      i === selectedBoat
+        ? '#66c4f5'
+        : '#3498db';
+
+    ctx.beginPath();
+
+    ctx.moveTo(10,0);
+    ctx.lineTo(-7,-6);
+    ctx.lineTo(-5,0);
+    ctx.lineTo(-7,6);
+    ctx.closePath();
+
+    ctx.fill();
+
+    if(i === selectedBoat){
+
+      ctx.strokeStyle = '#fff';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+    }
+
+    ctx.restore();
+
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 11px Arial';
+    ctx.textAlign = 'center';
+
+    ctx.fillText(
+      'B' + (b.id ?? i+1),
+      x,
+      y-12
+    );
+  });
+}
+
+/* =========================================================
+   CLICK BOAT ON MAP
+   ========================================================= */
+
+map.addEventListener(
+  'click',
+  e => {
+
+    const r =
+      map.getBoundingClientRect();
+
+    const x =
+      (e.clientX-r.left)
+      * 700 / r.width;
+
+    const y =
+      (e.clientY-r.top)
+      * 700 / r.height;
+
+    let hit = -1;
+    let best = 18;
+
+    latest.boats.forEach(
+      (b,i) => {
+
+        const dist =
+          Math.hypot(
+            x-n(b.x)*S,
+            y-n(b.y)*S
+          );
+
+        if(dist < best){
+
+          best = dist;
+          hit = i;
+        }
+      }
+    );
+
+    if(hit >= 0){
+      updateSelection(hit);
+    }
+  }
+);
+
+/* =========================================================
+   LISTS
+   ========================================================= */
+
+function renderLists(data){
+
+  const boats =
+    data.boats || [];
+
+  document.getElementById(
+    'boatList'
+  ).innerHTML =
+
+    boats.map((b,i) =>
+
+      `<div class="item"
+        style="${
+          i===selectedBoat
+            ? 'box-shadow:0 0 0 1px #66c4f5'
+            : ''
+        }">
+
+        <b>Boat ${b.id ?? i+1}</b>
+
+        ${
+          i===selectedBoat
+            ? '<span class="badge">SELECTED</span>'
+            : ''
+        }
+
+        <br>
+
+        <small>
+          Velocity:
+          ${n(b.velocity ?? b.speed).toFixed(2)}
+          |
+          Error:
+          ${n(b.trackErr ?? b.trackError).toFixed(2)}
+          |
+          PID Gain:
+          ${n(b.pidGainFactor).toFixed(2)}
+          <br>
+          Status:
+          ${
+            b.returnedToMothership
+              ? 'AT MOTHER SHIP'
+              : b.returning
+                ? 'RETURNING TO MOTHER SHIP'
+                : b.target
+                  ? 'RESCUING VICTIM ' + b.target
+                  : 'WAITING'
+          }
+        </small>
+
+      </div>`
+    ).join('')
+
+    || '<small>No boat data</small>';
+
+  document.getElementById(
+    'victimList'
+  ).innerHTML =
+
+    (data.victims || []).map(v =>
+
+      `<div class="item victim">
+
+        <b>Victim ${v.id ?? ''}</b>
+
+        ${
+          v.detected
+            ? '<span class="badge">DETECTED</span>'
+            : ''
+        }
+
+        <br>
+
+        <small>
+          ${
+            v.dead
+              ? 'DEAD'
+              : v.rescued
+                ? 'RESCUED'
+                : (v.lvl || 'PENDING')
+          }
+          —
+          (${Math.round(n(v.x))},
+           ${Math.round(n(v.y))})
+        </small>
+
+      </div>`
+    ).join('')
+
+    || '<small>No victim data</small>';
+
+  /* ---------- top statistics ---------- */
+
+  document.getElementById('t').textContent =
+    data.t ?? 0;
+
+  document.getElementById('r').textContent =
+    data.rescued ?? 0;
+
+  document.getElementById('d').textContent =
+    data.dead ?? 0;
+
+  document.getElementById('p').textContent =
+    Math.max(
+      0,
+      (data.victims || []).length
+      - n(data.rescued)
+      - n(data.dead)
+    );
+
+  document.getElementById('wind').textContent =
+    n(data.wind).toFixed(3);
+
+  document.getElementById('angle').textContent =
+    Math.round(n(data.windAng));
+
+  document.getElementById('debris').textContent =
+    (data.debris || []).length;
+}
+
+/* =========================================================
+   FETCH STATE.JSON
+   ========================================================= */
+
+async function fetchState(){
+
+  try{
+
+    let data = null;
+
+    const paths = [
+      'state.json',
+      'web_dashboard/state.json',
+      '../web_dashboard/state.json'
+    ];
+
+    for(const path of paths){
+
+      try{
+
+        const r =
+          await fetch(
+            path + '?t=' + Date.now(),
+            {
+              cache:'no-store'
+            }
+          );
+
+        if(r.ok){
+
+          data =
+            await r.json();
+
+          break;
+        }
+
+      }
+      catch(_){}
+    }
+
+    if(!data){
+      throw Error('No data');
+    }
+
+    document.getElementById(
+      'error'
+    ).style.display = 'none';
+
+    updateData(data);
+
+    document.getElementById(
+      'clock'
+    ).textContent =
+      '⏱️ ' +
+      new Date().toLocaleTimeString();
+
+  }
+  catch(e){
+
+    document.getElementById(
+      'error'
+    ).style.display = 'block';
+
+    document.getElementById(
+      'clock'
+    ).textContent =
+      '⏳ Waiting for simulation...';
+  }
+}
+
+/* =========================================================
+   START LIVE UPDATES
+   ========================================================= */
+
+fetchState();
+
+setInterval(
+  fetchState,
+  100
+);
+
+</script>
+
+</body>
+</html>
